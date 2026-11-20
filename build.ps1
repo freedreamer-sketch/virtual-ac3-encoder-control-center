@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Сборка AC3/DTS Control Center v2 (engine.exe + control_center.exe) и раскладка в .\bin
 
