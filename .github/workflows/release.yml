@@ -5,6 +5,7 @@ on:
     branches: [virtual-ac3-encoder-eq-dsp]
     paths-ignore:
       - '.github/workflows/**'
+      - 'scripts/**'
   workflow_dispatch:
     inputs:
       version:
