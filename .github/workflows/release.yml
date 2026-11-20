@@ -2,7 +2,7 @@ name: Release
 
 on:
   push:
-    branches: [codex/v3-eq-dsp-publish-2026-11-20]
+    branches: [virtual-ac3-encoder-eq-dsp]
     paths-ignore:
       - '.github/workflows/**'
   workflow_dispatch:
