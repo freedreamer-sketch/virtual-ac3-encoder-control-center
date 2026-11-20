@@ -37,8 +37,13 @@ function Find-FFmpeg {
   $candidates = @()
   if ($FfmpegRoot) { $candidates += $FfmpegRoot }
   $candidates += (Join-Path $root 'third_party\ffmpeg')
-  if ($LegacyDir -and (Test-Path -LiteralPath $LegacyDir)) {
-    $candidates += (Join-Path $LegacyDir 'third_party\ffmpeg')
+  if ($LegacyDir) {
+    try {
+      $legacyRoot = (Resolve-Path -LiteralPath $LegacyDir -ErrorAction Stop).Path
+      $candidates += (Join-Path $legacyRoot 'third_party\ffmpeg')
+    } catch {
+      Write-Verbose "Пропускаю недоступную старую папку: $LegacyDir"
+    }
   }
   foreach ($c in $candidates) {
     if (Test-Path (Join-Path $c 'include\libavcodec\avcodec.h')) { return (Resolve-Path $c).Path }
