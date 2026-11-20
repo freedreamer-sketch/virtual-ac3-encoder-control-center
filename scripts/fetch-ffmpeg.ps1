@@ -3,8 +3,8 @@
   Downloads a Windows x64 *shared* FFmpeg build (DLLs + import libs + headers) into
   third_party/ffmpeg so the engine can link libavcodec/libavformat/libavutil/libswresample.
 
-  Uses BtbN's prebuilt FFmpeg-Builds (https://github.com/BtbN/FFmpeg-Builds). LGPL shared
-  variant is sufficient: the native AC3 encoder and the spdif muxer are both included.
+  Uses BtbN's prebuilt FFmpeg-Builds rolling asset directly (without querying the rate-limited GitHub REST API).
+  LGPL shared variant is sufficient: the native AC3 encoder and the spdif muxer are included.
 
   Result layout:
     third_party/ffmpeg/bin      *.dll  (shipped next to the engine .exe)
@@ -13,8 +13,6 @@
 #>
 [CmdletBinding()]
 param(
-  # Which release branch to prefer in the BtbN "latest" rolling release.
-  [string]$Prefer = 'n7.1',
   [string]$Variant = 'win64-lgpl-shared',
   [string]$DestDir = (Join-Path $PSScriptRoot '..\third_party\ffmpeg')
 )
@@ -26,21 +24,12 @@ $DestDir = [System.IO.Path]::GetFullPath($DestDir)
 $tmp = Join-Path $env:TEMP ("ffmpeg-fetch-" + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Force -Path $tmp | Out-Null
 
-Write-Host "Querying BtbN FFmpeg-Builds 'latest' release for a $Variant asset (prefer $Prefer)..."
-$rel = Invoke-RestMethod -Uri 'https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/tags/latest' `
-  -Headers @{ 'User-Agent' = 'virtual-ac3-encoder' }
-
-$assets = $rel.assets | Where-Object { $_.name -like "*$Variant.zip" }
-if (-not $assets) { throw "No assets matching *$Variant.zip found in BtbN latest release." }
-
-$asset = $assets | Where-Object { $_.name -like "*$Prefer-*" } | Select-Object -First 1
-if (-not $asset) { $asset = $assets | Select-Object -First 1 }   # fall back to whatever shared build exists
-Write-Host "Selected: $($asset.name)  ($([math]::Round($asset.size/1MB,1)) MB)"
-
-$zip = Join-Path $tmp $asset.name
-Write-Host "Downloading..."
-Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $zip -Headers @{ 'User-Agent' = 'virtual-ac3-encoder' }
-
+$assetName = "ffmpeg-master-latest-$Variant.zip"
+$downloadUri = "https://github.com/FFmpeg-Builds/FFmpeg-Builds/releases/download/latest/$assetName"
+Write-Host "Using BtbN rolling release asset: $assetName"
+$zip = Join-Path $tmp $assetName
+Write-Host "Downloading directly from the GitHub release..."
+Invoke-WebRequest -Uri $downloadUri -OutFile $zip -Headers @{ 'User-Agent' = 'virtual-ac3-encoder' }
 Write-Host "Extracting..."
 Expand-Archive -Path $zip -DestinationPath $tmp -Force
 $inner = Get-ChildItem $tmp -Directory | Where-Object { $_.Name -like 'ffmpeg-*' } | Select-Object -First 1
@@ -58,8 +47,10 @@ foreach ($sub in 'bin','include','lib') {
 }
 
 # Write a small marker recording what we fetched.
-"$($asset.name)`n$(Get-Date -Format o)" | Set-Content (Join-Path $DestDir 'FETCHED.txt')
+"$assetName`n$(Get-Date -Format o)" | Set-Content (Join-Path $DestDir 'FETCHED.txt')
 
 Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
 Write-Host "Done. FFmpeg dev files are in: $DestDir"
 Get-ChildItem $DestDir | Select-Object Name | Format-Table -AutoSize
+
+
